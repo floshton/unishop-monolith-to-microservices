@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway::
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - USER_SERVICE_URL=http://user-service:8081
+      - UNICORN_SERVICE_URL=http://unicorn-service:8082
+      - BASKET_SERVICE_URL=http://basket-service:8083
+    depends_on:
+      - user-service
+      - unicorn-service
+      - basket-service
+
+  # User Microservice
+  user-service:
+    build: ./user-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/unishop
+      - SPRING_DATASOURCE_USERNAME=MonoToMicroUser
+      - SPRING_DATASOURCE_PASSWORD=MonoToMicroPassword
+    depends_on:
+      - mysql
+
+  # Unicorn Catalog Microservice
+  unicorn-service:
+    build: ./unicorn-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/unishop
+      - SPRING_DATASOURCE_USERNAME=MonoToMicroUser
+      - SPRING_DATASOURCE_PASSWORD=MonoToMicroPassword
+    depends_on:
+      - mysql
+
+  # Basket Microservice
+  basket-service:
+    build: ./basket-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - UNICORN_SERVICE_URL=http://unicorn-service:8082
+    depends_on:
+      - redis
+      - unicorn-service
+
+  # Database
+  mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=unishop
+      - MYSQL_USER=MonoToMicroUser
+      - MYSQL_PASSWORD=MonoToMicroPassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # Redis for caching and session storage
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mysql_data:
+  redis_data:
